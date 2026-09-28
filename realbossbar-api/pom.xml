@@ -6,13 +6,13 @@
 
     <groupId>joserodpt</groupId>
     <artifactId>realbossbar-api</artifactId>
-    <version>1.0</version>
+    <version>0.1</version>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>joserodpt.realbossbar</groupId>
         <artifactId>realbossbar-parent</artifactId>
-        <version>1.0</version>
+        <version>0.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
