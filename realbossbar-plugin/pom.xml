@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>joserodpt</groupId>
+    <artifactId>realbossbar-plugin</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>joserodpt.realbossbar</groupId>
+        <artifactId>realbossbar-parent</artifactId>
+        <version>1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <name>realbossbar-plugin</name>
+
+    <properties>
+        <!-- the build time, stamped into build.properties for the console to show. maven.build.timestamp
+             is always UTC and can't be filtered into resources itself, so it goes through a property -->
+        <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
+        <build.time>${maven.build.timestamp}</build.time>
+    </properties>
+
+    <build>
+        <finalName>realbossbar-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <compilerArgs>
+                        <!-- Lamp names command arguments after the method parameters, so the
+                             usage strings depend on these surviving. -->
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+
+                        <configuration>
+                            <!-- Replace the original jar rather than leaving an original-...jar beside it -->
+                            <outputFile>${project.build.directory}/${project.build.finalName}.jar</outputFile>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <minimizeJar>true</minimizeJar>
+
+                            <!-- Only these. Without an artifactSet the plugin shades every compile
+                                 dependency it can reach. -->
+                            <artifactSet>
+                                <includes>
+                                    <include>dev.dejvokep:boosted-yaml</include>
+                                    <include>io.github.revxrsal:lamp.common</include>
+                                    <include>io.github.revxrsal:lamp.bukkit</include>
+                                    <include>io.github.revxrsal:lamp.brigadier</include>
+                                    <include>joserodpt:realbossbar-api</include>
+                                    <include>com.github.joserodpt:RealUtils</include>
+                                    <include>io.github.projectunified:*</include>
+                                    <include>org.bstats:*</include>
+                                </includes>
+                            </artifactSet>
+
+                            <relocations>
+                                <relocation>
+                                    <pattern>dev.dejvokep.boostedyaml</pattern>
+                                    <shadedPattern>joserodpt.realbossbar.shaded.boostedyaml</shadedPattern>
+                                </relocation>
+                                <!-- com.mojang.brigadier is deliberately not relocated: those classes
+                                     come from the server, we only talk to them. -->
+                                <relocation>
+                                    <pattern>revxrsal.commands</pattern>
+                                    <shadedPattern>joserodpt.realbossbar.shaded.lamp</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>joserodpt.realutils</pattern>
+                                    <shadedPattern>joserodpt.realbossbar.shaded.realutils</shadedPattern>
+                                </relocation>
+                                <!-- Also rewrites the manager class names RealUtils loads by name. -->
+                                <relocation>
+                                    <pattern>io.github.projectunified.unidialog</pattern>
+                                    <shadedPattern>joserodpt.realbossbar.shaded.unidialog</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.bstats</pattern>
+                                    <shadedPattern>joserodpt.realbossbar.shaded.bstats</shadedPattern>
+                                </relocation>
+                            </relocations>
+
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/**</exclude>
+                                        <exclude>org/jetbrains/annotations/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <!-- Lamp reaches its Bukkit/Brigadier hooks and parameter types through
+                                     reflection and version probing, so minimizeJar can't see they are used. -->
+                                <filter>
+                                    <artifact>io.github.revxrsal:*</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                                <!-- The dialog managers and RealUtils' Paper text are only ever loaded by name. -->
+                                <filter>
+                                    <artifact>com.github.joserodpt:RealUtils</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                                <filter>
+                                    <artifact>io.github.projectunified:*</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                                <!-- Our own module: keep all of it rather than let minimizeJar guess. -->
+                                <filter>
+                                    <artifact>joserodpt:realbossbar-api</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>spigotmc-repo</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <repository>
+            <id>sonatype</id>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>minecraft-repo</id>
+            <url>https://libraries.minecraft.net/</url>
+        </repository>
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.14-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- lamp.bukkit declares lamp.common and lamp.brigadier at runtime scope, which is enough
+             for shading but leaves them off the compile classpath, so both are repeated here.
+             lamp.brigadier is needed to pick the Brigadier type of the name arguments, and
+             brigadier itself comes from the server. -->
+        <dependency>
+            <groupId>io.github.revxrsal</groupId>
+            <artifactId>lamp.common</artifactId>
+            <version>${lamp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.revxrsal</groupId>
+            <artifactId>lamp.brigadier</artifactId>
+            <version>${lamp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mojang</groupId>
+            <artifactId>brigadier</artifactId>
+            <version>1.0.18</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.revxrsal</groupId>
+            <artifactId>lamp.bukkit</artifactId>
+            <version>${lamp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>joserodpt</groupId>
+            <artifactId>realbossbar-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Dialogs, the chat prompt, GUIs and config, shaded and relocated above. It brings
+             UniDialog's Spigot and Paper backends with it, picked between at runtime. -->
+        <dependency>
+            <groupId>com.github.joserodpt</groupId>
+            <artifactId>RealUtils</artifactId>
+            <version>${realutils.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-bukkit</artifactId>
+            <version>${bstats.version}</version>
+        </dependency>
+        <!-- Pinned to bstats-bukkit's version, as in the other Real* plugins, so a provided
+             dependency can't bring in an older bstats-base to be shaded instead. -->
+        <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-base</artifactId>
+            <version>${bstats.version}</version>
+        </dependency>
+        <!-- Soft hooks: only touched when the plugin is actually present at runtime, so they stay
+             provided and are never shaded in. -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.joserodpt.RealPermissions</groupId>
+            <artifactId>realpermissions-api</artifactId>
+            <version>${realpermissions.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

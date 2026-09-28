@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>joserodpt.realbossbar</groupId>
+    <artifactId>realbossbar-parent</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <maven.compiler.release>16</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Shared with the other Real* plugins: dialogs (1.21.6+), the chat prompt, GUIs and config. -->
+        <realutils.version>1.3.0</realutils.version>
+        <lamp.version>4.0.0-rc.18</lamp.version>
+        <bstats.version>3.2.1</bstats.version>
+        <!-- JitPack coordinate for joserodpt/RealPermissions, the same commit the other Real* plugins pin. -->
+        <realpermissions.version>1e7015a05e</realpermissions.version>
+    </properties>
+
+    <modules>
+        <module>realbossbar-api</module>
+        <module>realbossbar-plugin</module>
+    </modules>
+
+    <name>RealBossbar-Parent</name>
+    <description>Parent project for all RealBossbar modules.</description>
+
+    <developers>
+        <developer>
+            <id>JoseGamerPT</id>
+        </developer>
+        <developer>
+            <id>joserodpt</id>
+        </developer>
+    </developers>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/joserodpt/RealBossbar/issues</url>
+    </issueManagement>
+
+    <build>
+        <defaultGoal>clean install</defaultGoal>
+    </build>
+
+</project>

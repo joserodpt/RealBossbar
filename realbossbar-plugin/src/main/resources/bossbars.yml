@@ -1,0 +1,51 @@
+# Every bossbar, by name. Edit them in game with /rbb edit, or here and then /rbb reload.
+#
+#   Enabled: whether it shows at all
+#   Titles: one or more frames, cycled through. & codes, hex and PlaceholderAPI placeholders work.
+#   Title-Interval: ticks each frame shows for (20 ticks are a second)
+#   Color: PINK, BLUE, RED, GREEN, YELLOW, PURPLE or WHITE
+#   Style: SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12 or SEGMENTED_20
+#   Progress: from 0.0 to 1.0, what a STATIC bar shows
+#   Progress-Placeholder: read for each player instead of the animation, as "%player_health%/20"
+#                         or a number from 0 to 100. Empty for none. Needs PlaceholderAPI.
+#   Animation: STATIC, DECREASE (empties once), INCREASE (fills once), LOOP (empties over and over)
+#              or BOUNCE (fills and empties)
+#   Animation-Duration: seconds one run of the animation takes
+#   Audience: all, perm:<permission> or players:<name>,<name>
+#   Worlds: where it shows, * for everywhere
+#   Disabled-Worlds: where it never shows
+Bossbars:
+  welcome:
+    Enabled: true
+    Titles:
+      - "&fWelcome to the server, &d%player_name%&f!"
+    Title-Interval: 40
+    Color: PURPLE
+    Style: SOLID
+    Progress: 1.0
+    Progress-Placeholder: ""
+    Animation: STATIC
+    Animation-Duration: 10
+    Audience: all
+    Worlds:
+      - "*"
+    Disabled-Worlds: []
+  server-info:
+    Enabled: false
+    Titles:
+      - "&fReal&5Bossbar"
+      - "&7Players online: &b%server_online%"
+      - "&7Visit &dour website &7for news!"
+    Title-Interval: 60
+    Color: BLUE
+    Style: SEGMENTED_10
+    Progress: 1.0
+    Progress-Placeholder: ""
+    Animation: BOUNCE
+    Animation-Duration: 6
+    Audience: all
+    Worlds:
+      - "*"
+    Disabled-Worlds: []
+
+Version: 1

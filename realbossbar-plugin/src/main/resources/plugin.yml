@@ -1,0 +1,21 @@
+name: RealBossbar
+description: Bossbars with animations, placeholders and per-world control.
+version: '${project.version}'
+main: joserodpt.realbossbar.plugin.RealBossbarPlugin
+api-version: '1.14'
+authors: [JoseGamer_PT]
+softdepend: [ PlaceholderAPI, RealPermissions ]
+website: https://www.spigotmc.org/members/40267/
+permissions:
+  realbossbar.admin:
+    description: Create, edit, delete, show and hide bossbars, and reload the plugin.
+    default: op
+    children:
+      realbossbar.announce: true
+      realbossbar.toggle: true
+  realbossbar.announce:
+    description: Send temporary bossbar announcements with /rbb announce.
+    default: op
+  realbossbar.toggle:
+    description: Hide and show bossbars for yourself with /rbb toggle.
+    default: true
