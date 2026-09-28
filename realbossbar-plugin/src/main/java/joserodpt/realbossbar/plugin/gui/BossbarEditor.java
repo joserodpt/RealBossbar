@@ -18,6 +18,7 @@ import joserodpt.realbossbar.api.bossbar.RBossbar;
 import joserodpt.realbossbar.api.config.RBBLanguage;
 import joserodpt.realbossbar.api.config.TranslatableLine;
 import joserodpt.realbossbar.plugin.BarText;
+import joserodpt.realbossbar.plugin.Placeholders;
 import joserodpt.realbossbar.plugin.RealBossbar;
 import joserodpt.realutils.gui.GUIBuilder;
 import joserodpt.realutils.gui.Pagination;
@@ -191,7 +192,7 @@ public final class BossbarEditor {
         if (!pages.isEmpty()) {
             int slot = 0;
             for (final RBossbar bar : pages.getPage(shown)) {
-                gui.setItem(Items.createItem(wool(bar.getColor()), 1, label(bar), lines("Editor.Items.Bar-Lore", "", BarText.describe(bar))),
+                gui.setItem(Items.createItem(wool(bar.getColor()), 1, label(bar), lines("Editor.Items.Bar-Entry", "", BarText.describe(bar))),
                         slot++, e -> {
                             if (e.getClick().isRightClick()) {
                                 bar.setEnabled(!bar.isEnabled());
@@ -233,7 +234,8 @@ public final class BossbarEditor {
         final String change = TranslatableLine.GUI_CLICK_CHANGE.get();
 
         gui.setItem(Items.createItem(Material.DRAGON_HEAD, 1, label(bar), Arrays.asList(BarText.describe(bar),
-                TranslatableLine.GUI_CURRENT_TITLE.with(VALUE, bar.getCurrentTitle()).get())), 4);
+                //as the bar shows it to this player; the frames below are left as typed, to be edited
+                TranslatableLine.GUI_CURRENT_TITLE.with(VALUE, Placeholders.apply(p, bar.getCurrentTitle())).get())), 4);
 
         gui.setItem(Items.createItem(bar.isEnabled() ? Material.LIME_DYE : Material.GRAY_DYE, 1,
                 TranslatableLine.EDITOR_ENABLED.with(VALUE, BarText.status(bar)).get(),
@@ -264,7 +266,7 @@ public final class BossbarEditor {
                         BossbarEditor::describe, bar::setAnimation));
 
         gui.setItem(Items.createItem(Material.EXPERIENCE_BOTTLE, 1, TranslatableLine.EDITOR_PROGRESS
-                .with(VALUE, Math.round(bar.getProgress() * 100)).get(), lines("Editor.Items.Click-Progress")), 21, e -> {
+                .with(VALUE, Math.round(bar.getProgress() * 100)).get(), lines("Editor.Items.Progress-Lore")), 21, e -> {
             //ten points at a time, and one with shift
             final int step = (e.getClick().isRightClick() ? -1 : 1) * (e.getClick().isShiftClick() ? 1 : 10);
             final long percent = Math.round(bar.getProgress() * 100) + step;
@@ -273,7 +275,7 @@ public final class BossbarEditor {
         });
 
         gui.setItem(Items.createItem(Material.REPEATER, 1, TranslatableLine.EDITOR_DURATION
-                .with(VALUE, bar.getAnimationDuration()).get(), lines("Editor.Items.Click-Duration")), 23, e -> {
+                .with(VALUE, bar.getAnimationDuration()).get(), lines("Editor.Items.Duration-Lore")), 23, e -> {
             bar.setAnimation(bar.getAnimation(), bar.getAnimationDuration() + step(e.getClick(), 10));
             this.saveAndOpen(p, bar, page, reopen);
         });

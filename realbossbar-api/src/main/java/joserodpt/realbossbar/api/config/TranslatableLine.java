@@ -62,7 +62,7 @@ public enum TranslatableLine implements LanguageLine {
     EDITOR_COLOR("Editor.Color"),
     EDITOR_STYLE("Editor.Style"),
     EDITOR_ANIMATION("Editor.Animation"),
-    EDITOR_PROGRESS("Editor.Progress"),
+    EDITOR_PROGRESS("Editor.Progress-Percent"),
     EDITOR_DURATION("Editor.Duration"),
     EDITOR_PLACEHOLDER("Editor.Placeholder"),
     EDITOR_AUDIENCE("Editor.Audience"),

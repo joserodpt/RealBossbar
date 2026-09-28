@@ -42,7 +42,7 @@ Editor:
   Color: "&fColour: &b%value%"
   Style: "&fStyle: &b%value%"
   Animation: "&fAnimation: &b%value%"
-  Progress: "&fProgress: &b%value%%"
+  Progress-Percent: "&fProgress: &b%value%%"
   Duration: "&fAnimation seconds: &b%value%"
   Placeholder: "&fProgress placeholder: &b%value%"
   Audience: "&fAudience: &b%value%"
@@ -85,7 +85,7 @@ Editor:
     Close: "&cClose"
     Yes: "&aYes"
     No: "&cNo"
-    Bar-Lore:
+    Bar-Entry:
       - "&7%info%"
       - ""
       - "&7Left-click to edit."
@@ -96,11 +96,11 @@ Editor:
     Click-Select: "&7Click to choose."
     Selected: "&aSelected"
     Current-Title: "&7Showing now: &r%value%"
-    Click-Progress:
+    Progress-Lore:
       - "&7What a static bar shows."
       - "&7Left-click &a+10%&7, right-click &c-10%&7."
       - "&7Shift for 1% at a time."
-    Click-Duration:
+    Duration-Lore:
       - "&7How long one run of the animation takes."
       - "&7Left-click &a+1s&7, right-click &c-1s&7."
       - "&7Shift for ten at a time."
@@ -173,4 +173,4 @@ System:
   Error-Command: "&cThe command you're trying to use doesn't exist."
   Error-Usage: "&cWrong usage for the command!"
 
-Version: 1
+Version: 2
