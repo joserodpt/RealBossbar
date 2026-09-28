@@ -130,6 +130,10 @@ bar.setAnimation(ProgressAnimation.DECREASE, 300);
 bar.setAudience(Audience.permission("koth.play"));
 rbb.getBossbarManager().register(bar);
 
+// a bar saved to bossbars.yml, which admins can edit too: from the second start on it is already
+// there, so ask for it rather than making it again. A reload keeps this same object up to date.
+RBossbar event = rbb.getBossbarManager().getOrCreate("event", "&6Event starts soon!");
+
 // a temporary bar that empties over 10 seconds
 rbb.getBossbarManager().announce(Audience.all(), "&cThe arena closes soon!", BarColor.RED, null, 10);
 

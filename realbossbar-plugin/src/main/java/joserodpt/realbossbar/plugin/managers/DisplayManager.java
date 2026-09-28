@@ -27,9 +27,12 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Puts the bars on players' screens and keeps them moving.
@@ -42,10 +45,18 @@ import java.util.UUID;
 public class DisplayManager {
 
     private final RealBossbar rbb;
-    /** Who sees each bar, and the Bukkit bar they see it through. */
-    private final Map<RBossbar, Map<UUID, BossBar>> shown = new HashMap<>();
+    /**
+     * Who sees each bar, and the Bukkit bar they see it through. Only changed on the main thread, but
+     * PlaceholderAPI may read it from another.
+     */
+    private final Map<RBossbar, Map<UUID, BossBar>> shown = new ConcurrentHashMap<>();
     /** The title frame each bar was showing at the last update, so a new frame is sent straight away. */
     private final Map<RBossbar, Integer> lastFrame = new HashMap<>();
+    /**
+     * Players whose quit is being handled: still online until it ends, but nothing may be shown to
+     * them any more. Cleared when they join again.
+     */
+    private final Set<UUID> leaving = new HashSet<>();
     private BukkitTask task;
     private long ticks = 0L;
 
@@ -135,8 +146,8 @@ public class DisplayManager {
     }
 
     /**
-     * Reads a filled-in progress placeholder: {@code 15/20} as a fraction, or a number, which is taken
-     * as a percentage when it is over 1.
+     * Reads a filled-in progress placeholder: {@code 15/20} as a fraction, or a number from 0 to 100,
+     * as bossbars.yml says, so {@code 1} is 1% rather than a full bar.
      *
      * @return null when it isn't a number, so the bar falls back to its animation
      */
@@ -152,7 +163,7 @@ public class DisplayManager {
                 return max == 0 ? 0D : ProgressAnimation.clamp(Double.parseDouble(value.substring(0, slash).trim()) / max);
             }
             final double number = Double.parseDouble(value);
-            return ProgressAnimation.clamp(number > 1D ? number / 100D : number);
+            return ProgressAnimation.clamp(number / 100D);
         } catch (final NumberFormatException e) {
             return null;
         }
@@ -168,6 +179,9 @@ public class DisplayManager {
 
     /** Shows the player every bar they should see now, and takes away those they shouldn't. */
     public void refresh(final Player p) {
+        if (this.leaving.contains(p.getUniqueId())) {
+            return;
+        }
         for (final RBossbar bar : this.rbb.getBossbarManager().getBossbars()) {
             final boolean should = this.shouldSee(p, bar);
             final boolean showing = this.isShowing(p, bar);
@@ -179,16 +193,29 @@ public class DisplayManager {
         }
     }
 
+    /** Applies a bar's title, colour, style and progress to everyone seeing it now, as after it is saved. */
+    public void redraw(final RBossbar bar) {
+        final Map<UUID, BossBar> viewers = this.shown.get(bar);
+        if (viewers == null) {
+            return;
+        }
+        for (final Map.Entry<UUID, BossBar> viewer : viewers.entrySet()) {
+            final Player p = Bukkit.getPlayer(viewer.getKey());
+            if (p != null) {
+                this.apply(bar, p, viewer.getValue(), true);
+            }
+        }
+    }
+
     private boolean shouldSee(final Player p, final RBossbar bar) {
         if (!bar.isEnabled()) {
             return false;
         }
         final String world = p.getWorld().getName();
-        final String disabledRoute = bar.isTemporary() ? "Announcements.Disabled-Worlds" : "RealBossbar.Disabled-Worlds";
-        for (final String disabled : RBBConfig.file().getStringList(disabledRoute)) {
-            if (disabled.equalsIgnoreCase(world)) {
-                return false;
-            }
+        //no bar shows in RealBossbar's disabled worlds, and announcements keep out of their own too
+        if (isListed("RealBossbar.Disabled-Worlds", world)
+                || (bar.isTemporary() && isListed("Announcements.Disabled-Worlds", world))) {
+            return false;
         }
         if (!bar.isAllowedIn(world)) {
             return false;
@@ -198,6 +225,15 @@ public class DisplayManager {
             return false;
         }
         return players.isForced(p, bar) || bar.getAudience().matches(p);
+    }
+
+    private static boolean isListed(final String route, final String world) {
+        for (final String listed : RBBConfig.file().getStringList(route)) {
+            if (listed.equalsIgnoreCase(world)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isShowing(final Player p, final RBossbar bar) {
@@ -212,15 +248,32 @@ public class DisplayManager {
     }
 
     private void show(final Player p, final RBossbar bar) {
-        final BossbarShowEvent event = new BossbarShowEvent(p, bar);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) {
-            return;
-        }
         final BossBar bossBar = Bukkit.createBossBar(this.title(bar, p), bar.getColor(), bar.getStyle());
         bossBar.setProgress(this.progress(bar, p));
+        //recorded before the event, so a listener that refreshes the player can't show it a second time
+        final Map<UUID, BossBar> viewers = this.shown.computeIfAbsent(bar, b -> new ConcurrentHashMap<>());
+        viewers.put(p.getUniqueId(), bossBar);
+
+        final BossbarShowEvent event = new BossbarShowEvent(p, bar);
+        Bukkit.getPluginManager().callEvent(event);
+        if (this.shown.get(bar) != viewers || viewers.get(p.getUniqueId()) != bossBar) {
+            //a listener took it away again, or the bar went, during the event
+            return;
+        }
+        if (event.isCancelled()) {
+            this.forgetViewer(bar, viewers, p.getUniqueId());
+            return;
+        }
         bossBar.addPlayer(p);
-        this.shown.computeIfAbsent(bar, b -> new HashMap<>()).put(p.getUniqueId(), bossBar);
+    }
+
+    /** Drops a viewer, and the bar's entry with its last one. */
+    private void forgetViewer(final RBossbar bar, final Map<UUID, BossBar> viewers, final UUID uuid) {
+        viewers.remove(uuid);
+        if (viewers.isEmpty()) {
+            this.shown.remove(bar, viewers);
+            this.lastFrame.remove(bar);
+        }
     }
 
     private void hide(final Player p, final RBossbar bar) {
@@ -228,22 +281,37 @@ public class DisplayManager {
         if (viewers == null) {
             return;
         }
-        final BossBar bossBar = viewers.remove(p.getUniqueId());
-        if (viewers.isEmpty()) {
-            this.shown.remove(bar);
-            this.lastFrame.remove(bar);
-        }
+        final BossBar bossBar = viewers.get(p.getUniqueId());
+        this.forgetViewer(bar, viewers, p.getUniqueId());
         if (bossBar != null) {
             bossBar.removeAll();
             Bukkit.getPluginManager().callEvent(new BossbarHideEvent(p, bar));
         }
     }
 
-    /** Takes every bar off a player leaving the server. */
+    /** Takes every bar off a player. */
     public void forget(final Player p) {
         for (final RBossbar bar : new ArrayList<>(this.shown.keySet())) {
             this.hide(p, bar);
         }
+    }
+
+    /**
+     * Takes every bar off a player leaving the server, and shows them none for the rest of the quit:
+     * they are still among the online players until it ends.
+     */
+    public void quit(final Player p) {
+        this.leaving.add(p.getUniqueId());
+        this.forget(p);
+    }
+
+    /**
+     * Before a joining player is refreshed: lets bars show to them again, and drops any left under
+     * their UUID from an earlier session, which would otherwise count as showing and never be sent.
+     */
+    public void join(final Player p) {
+        this.leaving.remove(p.getUniqueId());
+        this.forget(p);
     }
 
     /** Takes a bar off every screen, as when it is deleted. */

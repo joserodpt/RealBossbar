@@ -24,7 +24,8 @@ import java.util.logging.Logger;
  *
  * <pre>{@code
  * RealBossbarAPI rbb = RealBossbarAPI.getInstance();
- * RBossbar bar = rbb.getBossbarManager().create("event", "&6Event starts soon!");
+ * //the bar is saved to bossbars.yml, so from the second start on it is already there
+ * RBossbar bar = rbb.getBossbarManager().getOrCreate("event", "&6Event starts soon!");
  * bar.setAnimation(ProgressAnimation.DECREASE, 60);
  * rbb.getBossbarManager().save(bar);
  * }</pre>

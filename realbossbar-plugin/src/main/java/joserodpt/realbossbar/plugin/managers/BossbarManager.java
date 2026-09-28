@@ -37,8 +37,11 @@ public class BossbarManager implements BossbarManagerAPI {
     private static final String ROOT = "Bossbars";
 
     private final RealBossbar rbb;
-    /** By lower-case name, in the order bossbars.yml lists them, then the order they were added. */
-    private final Map<String, RBossbar> bars = new LinkedHashMap<>();
+    /**
+     * By lower-case name, in the order bossbars.yml lists them, then the order they were added.
+     * PlaceholderAPI may read it off the main thread, so going through it is done holding its lock.
+     */
+    private final Map<String, RBossbar> bars = Collections.synchronizedMap(new LinkedHashMap<>());
     private int announcements = 0;
 
     public BossbarManager(final RealBossbar rbb) {
@@ -46,17 +49,19 @@ public class BossbarManager implements BossbarManagerAPI {
     }
 
     /**
-     * Reads every bar in bossbars.yml, replacing the saved ones held before. Bars registered by other
-     * plugins, and announcements still running, are kept.
+     * Reads every bar in bossbars.yml. A saved bar held before is read into the same object, so
+     * references other plugins and open screens hold stay live; saved bars no longer in the file are
+     * dropped. Bars registered by other plugins, and announcements still running, are kept.
      */
     public void load() {
-        this.bars.values().removeIf(RBossbar::isPersistent);
+        final Map<String, RBossbar> before;
+        synchronized (this.bars) {
+            before = new LinkedHashMap<>(this.bars);
+        }
+        final Map<String, RBossbar> loaded = new LinkedHashMap<>();
 
         final Section root = RBBBossbars.file().getSection(ROOT);
-        if (root == null) {
-            return;
-        }
-        for (final Object key : root.getKeys()) {
+        for (final Object key : root == null ? Collections.<Object>emptySet() : root.getKeys()) {
             final String name = String.valueOf(key);
             final Section section = root.getSection(name);
             if (section == null) {
@@ -66,14 +71,31 @@ public class BossbarManager implements BossbarManagerAPI {
                 this.rbb.getLogger().warning("Skipped the bossbar '" + name + "': names can only have letters, numbers, - and _.");
                 continue;
             }
-            if (this.bars.containsKey(key(name))) {
+            final RBossbar held = before.get(key(name));
+            if (held != null && !held.isPersistent()) {
                 this.rbb.getLogger().warning("Skipped the bossbar '" + name + "': another plugin registered one by that name.");
                 continue;
             }
             final List<String> problems = new ArrayList<>();
-            final RBossbar bar = RBossbar.deserialize(name, section, problems);
+            final RBossbar bar;
+            if (held != null) {
+                held.read(section, problems);
+                bar = held;
+            } else {
+                bar = RBossbar.deserialize(name, section, problems);
+            }
             problems.forEach(problem -> this.rbb.getLogger().warning("Bossbar '" + name + "': " + problem + "."));
-            this.bars.put(key(name), bar);
+            loaded.put(key(name), bar);
+        }
+        before.forEach((key, bar) -> {
+            if (!bar.isPersistent()) {
+                loaded.put(key, bar);
+            }
+        });
+
+        synchronized (this.bars) {
+            this.bars.clear();
+            this.bars.putAll(loaded);
         }
     }
 
@@ -83,12 +105,14 @@ public class BossbarManager implements BossbarManagerAPI {
 
     @Override
     public Collection<RBossbar> getBossbars() {
-        return Collections.unmodifiableList(new ArrayList<>(this.bars.values()));
+        synchronized (this.bars) {
+            return Collections.unmodifiableList(new ArrayList<>(this.bars.values()));
+        }
     }
 
     @Override
     public Collection<RBossbar> getPermanentBossbars() {
-        return this.bars.values().stream().filter(bar -> !bar.isTemporary()).collect(Collectors.toList());
+        return this.getBossbars().stream().filter(bar -> !bar.isTemporary()).collect(Collectors.toList());
     }
 
     @Override
@@ -109,8 +133,16 @@ public class BossbarManager implements BossbarManagerAPI {
 
     @Override
     public void register(final RBossbar bar) {
-        if (this.bars.containsKey(key(bar.getName()))) {
-            throw new IllegalArgumentException("There's already a bossbar called " + bar.getName());
+        final RBossbar held = this.bars.get(key(bar.getName()));
+        if (held == bar) {
+            return;
+        }
+        if (held != null) {
+            //a saved bar, usually the copy bossbars.yml kept from the last time this one was registered
+            if (!held.isPersistent() || !bar.isPersistent()) {
+                throw new IllegalArgumentException("There's already a bossbar called " + bar.getName());
+            }
+            this.rbb.getDisplayManager().remove(held);
         }
         this.bars.put(key(bar.getName()), bar);
         if (bar.isPersistent()) {
@@ -146,6 +178,8 @@ public class BossbarManager implements BossbarManagerAPI {
         }
         //audience, worlds or enabled may have changed who should see it
         this.rbb.getDisplayManager().refreshAll();
+        //and a new title shows now, not at the next frame or placeholder refresh
+        this.rbb.getDisplayManager().redraw(bar);
     }
 
     @Override
@@ -168,7 +202,7 @@ public class BossbarManager implements BossbarManagerAPI {
 
     /** Takes every bar that ran out off the screen, and forgets it. */
     public void removeExpired() {
-        final List<RBossbar> expired = this.bars.values().stream().filter(RBossbar::isExpired).collect(Collectors.toList());
+        final List<RBossbar> expired = this.getBossbars().stream().filter(RBossbar::isExpired).collect(Collectors.toList());
         for (final RBossbar bar : expired) {
             this.delete(bar.getName());
         }

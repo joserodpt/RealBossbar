@@ -108,7 +108,10 @@ public class RBossbar {
         return this.lifetime > 0 && this.elapsed >= this.lifetime;
     }
 
-    /** Whether the bar may show in this world: listed in its worlds, and not in its disabled ones. */
+    /**
+     * Whether the bar may show in this world: listed in its worlds, and not in its disabled ones. No
+     * worlds at all reads as every world, the same as {@code *}.
+     */
     public boolean isAllowedIn(final World world) {
         return this.isAllowedIn(world.getName());
     }
@@ -117,7 +120,12 @@ public class RBossbar {
         if (containsIgnoreCase(this.disabledWorlds, world)) {
             return false;
         }
-        return this.worlds.contains(ALL_WORLDS) || containsIgnoreCase(this.worlds, world);
+        return this.isInAllWorlds() || containsIgnoreCase(this.worlds, world);
+    }
+
+    /** Whether its worlds are every world: {@code *}, or none listed at all. */
+    private boolean isInAllWorlds() {
+        return this.worlds.isEmpty() || this.worlds.contains(ALL_WORLDS);
     }
 
     /**
@@ -127,7 +135,7 @@ public class RBossbar {
     public void setWorldEnabled(final String world, final boolean enabled) {
         this.disabledWorlds.removeIf(w -> w.equalsIgnoreCase(world));
         if (enabled) {
-            if (!this.worlds.contains(ALL_WORLDS) && !containsIgnoreCase(this.worlds, world)) {
+            if (!this.isInAllWorlds() && !containsIgnoreCase(this.worlds, world)) {
                 this.worlds.add(world);
             }
         } else {
@@ -167,31 +175,40 @@ public class RBossbar {
      */
     public static RBossbar deserialize(final String name, final Section section, final List<String> problems) {
         final RBossbar bar = new RBossbar(name, null, true);
-        bar.enabled = section.getBoolean("Enabled", true);
+        bar.read(section, problems);
+        return bar;
+    }
+
+    /**
+     * Reads the bar's settings back from its section in bossbars.yml into this same object, as a
+     * reload does, so a reference another plugin holds stays the bar that shows. What is missing
+     * goes back to its default, and the animation starts over.
+     */
+    public void read(final Section section, final List<String> problems) {
+        this.enabled = section.getBoolean("Enabled", true);
+        this.titles = new ArrayList<>();
         if (section.isList("Titles")) {
-            bar.titles = new ArrayList<>(section.getStringList("Titles"));
+            this.titles = new ArrayList<>(section.getStringList("Titles"));
         } else if (section.contains("Titles")) {
-            bar.titles.add(section.getString("Titles"));
+            this.titles.add(section.getString("Titles"));
         }
-        bar.titleInterval = Math.max(1, section.getInt("Title-Interval", 40));
-        bar.color = parseEnum(BarColor.class, section.getString("Color"), BarColor.PURPLE, "Color", problems);
-        bar.style = parseEnum(BarStyle.class, section.getString("Style"), BarStyle.SOLID, "Style", problems);
-        bar.progress = ProgressAnimation.clamp(section.getDouble("Progress", 1D));
-        bar.progressPlaceholder = section.getString("Progress-Placeholder", "");
-        bar.animation = parseEnum(ProgressAnimation.class, section.getString("Animation"), ProgressAnimation.STATIC, "Animation", problems);
-        bar.animationDuration = Math.max(1, section.getInt("Animation-Duration", 10));
+        this.titleInterval = Math.max(1, section.getInt("Title-Interval", 40));
+        this.color = parseEnum(BarColor.class, section.getString("Color"), BarColor.PURPLE, "Color", problems);
+        this.style = parseEnum(BarStyle.class, section.getString("Style"), BarStyle.SOLID, "Style", problems);
+        this.progress = ProgressAnimation.clamp(section.getDouble("Progress", 1D));
+        this.progressPlaceholder = section.getString("Progress-Placeholder", "");
+        this.animation = parseEnum(ProgressAnimation.class, section.getString("Animation"), ProgressAnimation.STATIC, "Animation", problems);
+        this.animationDuration = Math.max(1, section.getInt("Animation-Duration", 10));
         final Audience audience = Audience.parse(section.getString("Audience", "all"));
         if (audience == null) {
             problems.add("Audience '" + section.getString("Audience") + "' can't be read, so it shows to everyone");
         }
-        bar.audience = audience == null ? Audience.all() : audience;
-        if (section.isList("Worlds")) {
-            bar.worlds = new ArrayList<>(section.getStringList("Worlds"));
-        }
-        if (section.isList("Disabled-Worlds")) {
-            bar.disabledWorlds = new ArrayList<>(section.getStringList("Disabled-Worlds"));
-        }
-        return bar;
+        this.audience = audience == null ? Audience.all() : audience;
+        this.worlds = section.isList("Worlds")
+                ? new ArrayList<>(section.getStringList("Worlds")) : new ArrayList<>(Collections.singletonList(ALL_WORLDS));
+        this.disabledWorlds = section.isList("Disabled-Worlds")
+                ? new ArrayList<>(section.getStringList("Disabled-Worlds")) : new ArrayList<>();
+        this.resetAnimation();
     }
 
     private static <E extends Enum<E>> E parseEnum(final Class<E> type, final String value, final E fallback,
@@ -324,7 +341,7 @@ public class RBossbar {
         this.audience = audience == null ? Audience.all() : audience;
     }
 
-    /** The worlds it shows in, {@code *} meaning all of them. */
+    /** The worlds it shows in, {@code *} (or no world at all) meaning all of them. */
     public List<String> getWorlds() {
         return Collections.unmodifiableList(this.worlds);
     }

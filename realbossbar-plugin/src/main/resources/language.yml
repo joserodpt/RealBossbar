@@ -19,6 +19,8 @@ Bossbar:
   Toggle-Off: "&fBossbars are now &chidden&f."
   Toggle-Bar-On: "&d%name% &fis &ashown &fagain."
   Toggle-Bar-Off: "&d%name% &fis now &chidden&f."
+  # /rbb toggle <bar> while every bar is hidden with /rbb toggle
+  Toggle-Bar-Hiding-All: "&d%name% &fis no longer hidden by itself, but every bossbar still is. &7Show them again with &f/rbb toggle&7."
   Announced: "&fAnnounced to &b%value% &fplayer(s)."
   List-Header: "&fBossbars &7(%value%)&f:"
   # %value% is the bar's state: Status-On or Status-Off

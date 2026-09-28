@@ -47,6 +47,7 @@ public enum TranslatableLine implements LanguageLine {
     BAR_TOGGLE_OFF("Bossbar.Toggle-Off"),
     BAR_TOGGLE_BAR_ON("Bossbar.Toggle-Bar-On"),
     BAR_TOGGLE_BAR_OFF("Bossbar.Toggle-Bar-Off"),
+    BAR_TOGGLE_BAR_HIDING_ALL("Bossbar.Toggle-Bar-Hiding-All"),
     BAR_ANNOUNCED("Bossbar.Announced"),
     BAR_LIST_HEADER("Bossbar.List-Header"),
     BAR_LIST_ENTRY("Bossbar.List-Entry"),

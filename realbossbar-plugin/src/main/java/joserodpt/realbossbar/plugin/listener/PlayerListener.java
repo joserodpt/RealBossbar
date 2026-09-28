@@ -42,6 +42,7 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(final PlayerJoinEvent e) {
         final Player p = e.getPlayer();
+        this.rbb.getDisplayManager().join(p);
         //a tick later, once the client is ready to be sent bars
         Bukkit.getScheduler().runTask(this.rbb.getPlugin(), () -> {
             if (p.isOnline()) {
@@ -57,7 +58,7 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(final PlayerQuitEvent e) {
-        this.rbb.getDisplayManager().forget(e.getPlayer());
+        this.rbb.getDisplayManager().quit(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

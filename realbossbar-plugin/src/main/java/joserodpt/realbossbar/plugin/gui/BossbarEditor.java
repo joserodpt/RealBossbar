@@ -64,13 +64,42 @@ public final class BossbarEditor {
         return new ArrayList<>(this.rbb.getBossbarManager().getPermanentBossbars());
     }
 
-    /** Saves the change and says so, unless the bar was deleted while its editor was open. */
+    /** Saves the change, unless the bar was deleted while its editor was open, and says whether it did. */
     private boolean save(final RBossbar bar) {
         if (this.rbb.getBossbarManager().getBossbar(bar.getName()) != bar) {
             return false;
         }
         this.rbb.getBossbarManager().save(bar);
         return true;
+    }
+
+    /** Saves and goes back to the bar's dialog, or, if the bar is gone, says so and goes back to the list. */
+    private void saveAndOpen(final Player p, final RBossbar bar, final int page) {
+        if (this.save(bar)) {
+            this.openBar(p, bar, page);
+        } else {
+            this.gone(p, bar);
+            this.openList(p, page);
+        }
+    }
+
+    /** The inventory version of {@link #saveAndOpen}. */
+    private void saveAndOpenInventory(final Player p, final RBossbar bar, final int page) {
+        if (this.save(bar)) {
+            this.openBarInventory(p, bar, page);
+        } else {
+            this.gone(p, bar);
+            this.openListInventory(p, page);
+        }
+    }
+
+    private void gone(final Player p, final RBossbar bar) {
+        TranslatableLine.BAR_NOT_FOUND.with(NAME, bar.getName()).send(p);
+    }
+
+    /** Where a slider starts: the value, kept within the slider as the dialog keeps it. */
+    private static int within(final int value, final int min, final int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private static String label(final RBossbar bar) {
@@ -157,8 +186,7 @@ public final class BossbarEditor {
                 .icon(Material.DRAGON_HEAD)
                 .option(TranslatableLine.EDITOR_ENABLED.with(VALUE, BarText.status(bar)).get(), null, () -> {
                     bar.setEnabled(!bar.isEnabled());
-                    this.save(bar);
-                    this.openBar(p, bar, page);
+                    this.saveAndOpen(p, bar, page);
                 })
                 .option(TranslatableLine.EDITOR_TITLES.get(), null, () -> this.editTitles(p, bar, page))
                 .option(TranslatableLine.EDITOR_COLOR.with(VALUE, BarText.color(bar.getColor()) + Text.beautifyEnumName(bar.getColor().name())).get(), null,
@@ -186,8 +214,7 @@ public final class BossbarEditor {
         for (final E value : values) {
             menu.option(label.apply(value), null, () -> {
                 set.accept(value);
-                this.save(bar);
-                this.openBar(p, bar, page);
+                this.saveAndOpen(p, bar, page);
             });
         }
         menu.close(TranslatableLine.EDITOR_BACK.get())
@@ -195,43 +222,45 @@ public final class BossbarEditor {
     }
 
     private void editTitles(final Player p, final RBossbar bar, final int page) {
+        final int interval = within(bar.getTitleInterval(), 1, 200);
         new DialogForm(TranslatableLine.EDITOR_TITLES_DIALOG.with(NAME, bar.getName()).get(),
                 TranslatableLine.EDITOR_TITLES_DESCRIPTION.get())
                 .text("titles", TranslatableLine.EDITOR_TITLES_FIELD.get(), BarText.joinFrames(bar.getTitles()), 2048)
-                .slider("interval", TranslatableLine.EDITOR_TITLE_INTERVAL_FIELD.get(), 1, 200, 1, bar.getTitleInterval())
+                .slider("interval", TranslatableLine.EDITOR_TITLE_INTERVAL_FIELD.get(), 1, 200, 1, interval)
                 .open(p, answers -> {
                     final List<String> frames = BarText.splitFrames(answers.text("titles", ""));
                     if (!frames.isEmpty()) {
                         bar.setTitles(frames);
                     }
-                    final Double interval = answers.moved("interval", bar.getTitleInterval(), 1);
-                    if (interval != null) {
-                        bar.setTitleInterval((int) Math.round(interval));
+                    //against where the slider started, so an interval over 200 isn't cut to 200 untouched
+                    final Double moved = answers.moved("interval", interval, 1);
+                    if (moved != null) {
+                        bar.setTitleInterval((int) Math.round(moved));
                     }
-                    this.save(bar);
-                    this.openBar(p, bar, page);
+                    this.saveAndOpen(p, bar, page);
                 }, () -> this.openBar(p, bar, page), () -> this.openBarInventory(p, bar, page));
     }
 
     private void editProgress(final Player p, final RBossbar bar, final int page) {
-        final int progress = (int) Math.round(bar.getProgress() * 100);
+        //where the sliders start, which a value out of their range is moved into
+        final int progress = within((int) Math.round(bar.getProgress() * 100), 0, 100);
+        final int duration = within(bar.getAnimationDuration(), 1, 300);
         new DialogForm(TranslatableLine.EDITOR_PROGRESS_DIALOG.with(NAME, bar.getName()).get(),
                 TranslatableLine.EDITOR_PROGRESS_DESCRIPTION.get())
                 .slider("progress", TranslatableLine.EDITOR_PROGRESS_FIELD.get(), 0, 100, 1, progress)
-                .slider("duration", TranslatableLine.EDITOR_DURATION_FIELD.get(), 1, 300, 1, bar.getAnimationDuration())
+                .slider("duration", TranslatableLine.EDITOR_DURATION_FIELD.get(), 1, 300, 1, duration)
                 .text("placeholder", TranslatableLine.EDITOR_PLACEHOLDER_FIELD.get(), bar.getProgressPlaceholder(), 256)
                 .open(p, answers -> {
                     final Double moved = answers.moved("progress", progress, 1);
                     if (moved != null) {
                         bar.setProgress(moved / 100D);
                     }
-                    final Double duration = answers.moved("duration", bar.getAnimationDuration(), 1);
-                    if (duration != null) {
-                        bar.setAnimation(bar.getAnimation(), (int) Math.round(duration));
+                    final Double seconds = answers.moved("duration", duration, 1);
+                    if (seconds != null) {
+                        bar.setAnimation(bar.getAnimation(), (int) Math.round(seconds));
                     }
                     bar.setProgressPlaceholder(answers.text("placeholder", bar.getProgressPlaceholder()));
-                    this.save(bar);
-                    this.openBar(p, bar, page);
+                    this.saveAndOpen(p, bar, page);
                 }, () -> this.openBar(p, bar, page), () -> this.openBarInventory(p, bar, page));
     }
 
@@ -240,19 +269,27 @@ public final class BossbarEditor {
                 TranslatableLine.EDITOR_AUDIENCE_DESCRIPTION.get())
                 .text("audience", TranslatableLine.EDITOR_AUDIENCE_FIELD.get(), bar.getAudience().toString(), 1024)
                 .open(p, answers -> {
-                    this.setAudience(p, bar, answers.text("audience", bar.getAudience().toString()));
-                    this.openBar(p, bar, page);
+                    if (this.setAudience(p, bar, answers.text("audience", bar.getAudience().toString()))) {
+                        this.openBar(p, bar, page);
+                    } else {
+                        this.openList(p, page);
+                    }
                 }, () -> this.openBar(p, bar, page), () -> this.openBarInventory(p, bar, page));
     }
 
-    private void setAudience(final Player p, final RBossbar bar, final String typed) {
+    /** @return false if the bar is gone, after saying so; a typo only says what couldn't be read */
+    private boolean setAudience(final Player p, final RBossbar bar, final String typed) {
         final Audience audience = Audience.parse(typed);
         if (audience == null) {
             TranslatableLine.BAR_INVALID_AUDIENCE.with(VALUE, typed).send(p);
-            return;
+            return true;
         }
         bar.setAudience(audience);
-        this.save(bar);
+        if (!this.save(bar)) {
+            this.gone(p, bar);
+            return false;
+        }
+        return true;
     }
 
     private void editWorlds(final Player p, final RBossbar bar, final int page) {
@@ -263,8 +300,7 @@ public final class BossbarEditor {
                 .open(p, answers -> {
                     setWorlds(bar, answers.text("worlds", String.join(",", bar.getWorlds())));
                     bar.setDisabledWorlds(BarText.splitList(answers.text("disabled", String.join(",", bar.getDisabledWorlds()))));
-                    this.save(bar);
-                    this.openBar(p, bar, page);
+                    this.saveAndOpen(p, bar, page);
                 }, () -> this.openBar(p, bar, page), () -> this.openBarInventory(p, bar, page));
     }
 
@@ -303,8 +339,7 @@ public final class BossbarEditor {
         gui.setItem(Items.createItem(bar.isEnabled() ? Material.LIME_DYE : Material.GRAY_DYE, 1,
                 TranslatableLine.EDITOR_ENABLED.with(VALUE, BarText.status(bar)).get(), Collections.singletonList(cycle)), 10, e -> {
             bar.setEnabled(!bar.isEnabled());
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         final List<String> titleLore = new ArrayList<>();
@@ -314,52 +349,55 @@ public final class BossbarEditor {
         gui.setItem(Items.createItem(Material.NAME_TAG, 1, TranslatableLine.EDITOR_TITLES.get(), titleLore), 11,
                 e -> this.askChat(p, "Editor.Type-Title", typed -> {
                     final List<String> frames = BarText.splitFrames(typed);
-                    if (!frames.isEmpty()) {
-                        bar.setTitles(frames);
-                        this.save(bar);
+                    if (frames.isEmpty()) {
+                        reopen.run();
+                        return;
                     }
+                    bar.setTitles(frames);
+                    this.saveAndOpenInventory(p, bar, page);
                 }, reopen));
 
         gui.setItem(Items.createItem(wool(bar.getColor()), 1, TranslatableLine.EDITOR_COLOR
                 .with(VALUE, BarText.color(bar.getColor()) + Text.beautifyEnumName(bar.getColor().name())).get(), Collections.singletonList(cycle)), 12, e -> {
             bar.setColor(cycle(bar.getColor(), BarColor.values(), e.getClick()));
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         gui.setItem(Items.createItem(Material.ITEM_FRAME, 1, TranslatableLine.EDITOR_STYLE
                 .with(VALUE, Text.beautifyEnumName(bar.getStyle().name())).get(), Collections.singletonList(cycle)), 13, e -> {
             bar.setStyle(cycle(bar.getStyle(), BarStyle.values(), e.getClick()));
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         gui.setItem(Items.createItem(Material.CLOCK, 1, TranslatableLine.EDITOR_ANIMATION
                 .with(VALUE, Text.beautifyEnumName(bar.getAnimation().name())).get(), Collections.singletonList(cycle)), 14, e -> {
             bar.setAnimation(cycle(bar.getAnimation(), ProgressAnimation.values(), e.getClick()));
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         gui.setItem(Items.createItem(Material.EXPERIENCE_BOTTLE, 1, TranslatableLine.GUI_PROGRESS
                 .with(VALUE, Math.round(bar.getProgress() * 100)).get(), RBBLanguage.file().getStringList("Editor.Items.Click-Progress")), 15, e -> {
             final double step = e.getClick().isRightClick() ? -0.1D : 0.1D;
             bar.setProgress(Math.round((bar.getProgress() + step) * 10D) / 10D);
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         gui.setItem(Items.createItem(Material.REPEATER, 1, TranslatableLine.GUI_DURATION
                 .with(VALUE, bar.getAnimationDuration()).get(), RBBLanguage.file().getStringList("Editor.Items.Click-Duration")), 16, e -> {
             final int step = (e.getClick().isShiftClick() ? 10 : 1) * (e.getClick().isRightClick() ? -1 : 1);
             bar.setAnimation(bar.getAnimation(), bar.getAnimationDuration() + step);
-            this.save(bar);
-            reopen.run();
+            this.saveAndOpenInventory(p, bar, page);
         });
 
         gui.setItem(Items.createItem(Material.PLAYER_HEAD, 1, TranslatableLine.EDITOR_AUDIENCE
                 .with(VALUE, bar.getAudience()).get(), Collections.singletonList(type)), 19,
-                e -> this.askChat(p, "Editor.Type-Audience", typed -> this.setAudience(p, bar, typed), reopen));
+                e -> this.askChat(p, "Editor.Type-Audience", typed -> {
+                    if (this.setAudience(p, bar, typed)) {
+                        reopen.run();
+                    } else {
+                        this.openListInventory(p, page);
+                    }
+                }, reopen));
 
         gui.setItem(Items.createItem(Material.GRASS_BLOCK, 1, TranslatableLine.EDITOR_WORLDS.get(), Arrays.asList(
                         TranslatableLine.GUI_WORLDS.with(VALUE, String.join(", ", bar.getWorlds())).get(),
@@ -367,7 +405,7 @@ public final class BossbarEditor {
                         "", type)), 20,
                 e -> this.askChat(p, "Editor.Type-Worlds", typed -> {
                     setWorlds(bar, typed);
-                    this.save(bar);
+                    this.saveAndOpenInventory(p, bar, page);
                 }, reopen));
 
         gui.setItem(Items.createItem(Material.ARROW, 1, TranslatableLine.EDITOR_BACK.get()), 22, e -> this.openListInventory(p, page));
@@ -385,14 +423,13 @@ public final class BossbarEditor {
         gui.openInventory(p);
     }
 
-    /** Asks in chat only: this is the version for servers without dialogs. */
-    private void askChat(final Player p, final String titlesRoute, final Consumer<String> typed, final Runnable after) {
+    /**
+     * Asks in chat only: this is the version for servers without dialogs. {@code typed} opens the
+     * next screen itself; {@code cancelled} is opened when the player cancels.
+     */
+    private void askChat(final Player p, final String titlesRoute, final Consumer<String> typed, final Runnable cancelled) {
         new PlayerInput(p, false, RBBLanguage.file().getStringList(titlesRoute), Collections.emptyList(),
-                input -> {
-                    typed.accept(input);
-                    after.run();
-                },
-                input -> after.run());
+                typed::accept, input -> cancelled.run());
     }
 
     /** The next constant, or the one before on a right-click. */

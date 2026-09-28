@@ -7,12 +7,13 @@
 #   Style: SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12 or SEGMENTED_20
 #   Progress: from 0.0 to 1.0, what a STATIC bar shows
 #   Progress-Placeholder: read for each player instead of the animation, as "%player_health%/20"
-#                         or a number from 0 to 100. Empty for none. Needs PlaceholderAPI.
+#                         or a number from 0 to 100 (so 1 is 1%, not a full bar). Empty for none.
+#                         Needs PlaceholderAPI.
 #   Animation: STATIC, DECREASE (empties once), INCREASE (fills once), LOOP (empties over and over)
 #              or BOUNCE (fills and empties)
 #   Animation-Duration: seconds one run of the animation takes
 #   Audience: all, perm:<permission> or players:<name>,<name>
-#   Worlds: where it shows, * for everywhere
+#   Worlds: where it shows, * (or an empty list) for everywhere
 #   Disabled-Worlds: where it never shows
 Bossbars:
   welcome:

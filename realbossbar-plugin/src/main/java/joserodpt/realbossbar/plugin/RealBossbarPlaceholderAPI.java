@@ -62,6 +62,10 @@ public class RealBossbarPlaceholderAPI extends PlaceholderExpansion {
         return this.plugin.getVersion();
     }
 
+    /**
+     * May be asked from another thread, as by a scoreboard updating asynchronously: the bar list and
+     * who sees what are safe to read from any thread, and a bar's own values are only read, never set.
+     */
     @Override
     public String onRequest(final OfflinePlayer player, final String identifier) {
         switch (identifier) {

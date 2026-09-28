@@ -126,9 +126,15 @@ public class BossbarCMD {
             TranslatableLine.BAR_ALREADY_EXISTS.with(NAME, name).send(s);
             return;
         }
+        final List<String> frames = title == null ? null : BarText.splitFrames(title);
+        //only bars, such as "|", would leave it with no title at all
+        if (frames != null && frames.isEmpty()) {
+            TranslatableLine.SYSTEM_ERROR_USAGE.send(s);
+            return;
+        }
         final RBossbar bar = this.rbb.getBossbarManager().create(name, "&f" + name);
-        if (title != null) {
-            bar.setTitles(BarText.splitFrames(title));
+        if (frames != null) {
+            bar.setTitles(frames);
             this.rbb.getBossbarManager().save(bar);
         }
         TranslatableLine.BAR_CREATED.with(NAME, bar.getName()).send(s);
@@ -149,8 +155,12 @@ public class BossbarCMD {
     @SuppressWarnings("unused")
     public void title(final CommandSender s, @SuggestFrom(RBBSuggestion.BOSSBARS) final String bar, final String title) {
         final RBossbar found = this.find(s, bar);
+        if (found == null) {
+            return;
+        }
         final List<String> frames = BarText.splitFrames(title);
-        if (found == null || frames.isEmpty()) {
+        if (frames.isEmpty()) {
+            TranslatableLine.SYSTEM_ERROR_USAGE.send(s);
             return;
         }
         found.setTitles(frames);
@@ -339,7 +349,14 @@ public class BossbarCMD {
         final RBossbar found = this.find(p, bar);
         if (found != null) {
             final boolean shown = this.rbb.getPlayerManager().toggle(p, found);
-            (shown ? TranslatableLine.BAR_TOGGLE_BAR_ON : TranslatableLine.BAR_TOGGLE_BAR_OFF).with(NAME, found.getName()).send(p);
+            if (!shown) {
+                TranslatableLine.BAR_TOGGLE_BAR_OFF.with(NAME, found.getName()).send(p);
+            } else if (this.rbb.getPlayerManager().isHidingAll(p)) {
+                //no longer hidden by itself, but every bar still is
+                TranslatableLine.BAR_TOGGLE_BAR_HIDING_ALL.with(NAME, found.getName()).send(p);
+            } else {
+                TranslatableLine.BAR_TOGGLE_BAR_ON.with(NAME, found.getName()).send(p);
+            }
         }
     }
 }

@@ -24,6 +24,7 @@ import joserodpt.realpermissions.api.pluginhook.ExternalPlugin;
 import joserodpt.realpermissions.api.pluginhook.ExternalPluginPermission;
 import joserodpt.realutils.RealUtils;
 import joserodpt.realutils.dialog.Dialogs;
+import joserodpt.realutils.gui.GUIBuilder;
 import joserodpt.realutils.input.PlayerInput;
 import joserodpt.realutils.text.ForestColorAPI;
 import joserodpt.realutils.text.Text;
@@ -31,6 +32,7 @@ import joserodpt.realutils.update.UpdateChecker;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -132,6 +134,16 @@ public final class RealBossbarPlugin extends JavaPlugin {
         Dialogs.pageLabels(TranslatableLine.SYSTEM_DIALOG_PREVIOUS.get(), TranslatableLine.SYSTEM_DIALOG_NEXT.get());
     }
 
+    /** Takes every editor inventory, dialog and chat prompt off players' screens, forgetting their callbacks. */
+    void closeEditors() {
+        //a prompt asked in a text box takes its own dialog away
+        PlayerInput.cancelAll();
+        for (final Player p : Bukkit.getOnlinePlayers()) {
+            Dialogs.close(p.getUniqueId());
+        }
+        GUIBuilder.closeAll();
+    }
+
     /** The newer version on SpigotMC, or null when there is none. */
     public String getNewVersion() {
         return this.newVersion;
@@ -177,8 +189,10 @@ public final class RealBossbarPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        //the listeners behind them are going: an editor left open would let its items be taken
+        closeEditors();
+        //after closing them, since dialogs can't be taken off screens once it has run
         Dialogs.shutdown();
-        PlayerInput.cancelAll();
         if (realBossbar != null) {
             realBossbar.getDisplayManager().stop();
             //Bukkit bars outlive the plugin otherwise, stuck on screen until the player leaves

@@ -74,7 +74,9 @@ public class RealBossbar extends RealBossbarAPI {
 
     @Override
     public void reload() {
-        //every Bukkit bar belongs to a bar object the reload replaces
+        //the editor's screens and prompts were built from the settings about to be read again
+        this.plugin.closeEditors();
+        //shown again below, with the settings read again
         this.displayManager.hideAll();
 
         RBBConfig.reload();
