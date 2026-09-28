@@ -31,7 +31,8 @@ You decide who sees it (everyone, a permission, or a list of players) and in whi
 - **Animations**: `STATIC`, `DECREASE` (a countdown), `INCREASE`, `LOOP` or `BOUNCE`, over as many seconds as you like.
 - **Announcements**: `/rbb announce all 10 &eServer restarting soon!` shows a bar that empties over 10 seconds and then disappears.
 - **PlaceholderAPI**: any placeholder in titles and progress, plus placeholders of its own.
-- **Editor**: dialogs on 1.21.6 and up, and inventories on older versions.
+- **Editor**: `/rbb edit` opens an inventory GUI for every setting: pick colours, styles and animations, reorder
+  title frames, choose who sees a bar and toggle it world by world. Anything typed is asked for in chat.
 - **API**: create and drive bars from your own plugin.
 
 ## Requirements
@@ -67,7 +68,7 @@ Everything is under `/realbossbar`, or `/rbb` for short. `/bossbar` stays vanill
 
 ## Configuration
 
-- **config.yml**: the prefix, whether to use dialogs, how often bars update, the worlds where no bar shows, and
+- **config.yml**: the prefix, how often bars update, the worlds where no bar shows, and
   the colour, style and disabled worlds for announcements.
 - **bossbars.yml**: every bar. Each setting is explained at the top of the file.
 - **language.yml**: every message and editor label.

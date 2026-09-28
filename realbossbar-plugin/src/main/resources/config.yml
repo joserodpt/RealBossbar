@@ -8,9 +8,6 @@
 RealBossbar:
   Prefix: "&fReal&5Bossbar &7|"
   Check-for-Updates: true
-  # On servers that have dialogs (1.21.6 and up), edit bars and ask for typed input in dialogs
-  # instead of inventories and the chat.
-  useDialogs: true
   # Ticks between bar updates: how smoothly animations move. 20 ticks are a second.
   Update-Interval: 2
   # Ticks between working out again who should see which bar, for audiences with permissions and

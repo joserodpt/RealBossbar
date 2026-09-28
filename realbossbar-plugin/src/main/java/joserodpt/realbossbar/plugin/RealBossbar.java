@@ -82,7 +82,6 @@ public class RealBossbar extends RealBossbarAPI {
         RBBConfig.reload();
         RBBLanguage.reload();
         RBBBossbars.reload();
-        this.plugin.applyDialogLabels();
 
         this.bossbarManager.load();
         //Update-Interval may have changed

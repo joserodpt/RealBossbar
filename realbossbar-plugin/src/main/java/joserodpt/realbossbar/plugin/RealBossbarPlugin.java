@@ -23,7 +23,6 @@ import joserodpt.realpermissions.api.RealPermissionsAPI;
 import joserodpt.realpermissions.api.pluginhook.ExternalPlugin;
 import joserodpt.realpermissions.api.pluginhook.ExternalPluginPermission;
 import joserodpt.realutils.RealUtils;
-import joserodpt.realutils.dialog.Dialogs;
 import joserodpt.realutils.gui.GUIBuilder;
 import joserodpt.realutils.input.PlayerInput;
 import joserodpt.realutils.text.ForestColorAPI;
@@ -32,7 +31,6 @@ import joserodpt.realutils.update.UpdateChecker;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -84,13 +82,10 @@ public final class RealBossbarPlugin extends JavaPlugin {
         PluginManager pm = Bukkit.getPluginManager();
         pm.registerEvents(new PlayerListener(realBossbar), this);
         pm.registerEvents(PlayerInput.getListener(), this);
-        //bars are edited, and typed input asked for, in dialogs on servers that have them
-        Dialogs.setup(this, () -> RBBConfig.file().getBoolean("RealBossbar.useDialogs", true));
-        Dialogs.colorizer(ForestColorAPI::colorize);
-        applyDialogLabels();
+        //typed input is always asked for in chat: the editor is inventories only
         PlayerInput.setup(this,
                 p -> RBBLanguage.file().getStringList("System.Type-Input"),
-                p -> RBBLanguage.file().getStringList("System.Type-Input-Dialog"),
+                p -> Collections.emptyList(),
                 TranslatableLine.SYSTEM_INPUT_CANCELLED::send,
                 TranslatableLine.SYSTEM_ERROR_OCCURRED::send);
 
@@ -127,20 +122,9 @@ public final class RealBossbarPlugin extends JavaPlugin {
         getLogger().info("<------------------ RealBossbar vPT ------------------>".replace("PT", this.getDescription().getVersion()));
     }
 
-    /** The dialogs' own buttons, from language.yml. Applied again on a reload. */
-    void applyDialogLabels() {
-        Dialogs.labels(TranslatableLine.SYSTEM_DIALOG_CONFIRM.get(), TranslatableLine.SYSTEM_DIALOG_CANCEL.get(),
-                TranslatableLine.SYSTEM_DIALOG_CLOSE.get(), TranslatableLine.SYSTEM_DIALOG_BACK.get(), TranslatableLine.SYSTEM_DIALOG_SAVE.get());
-        Dialogs.pageLabels(TranslatableLine.SYSTEM_DIALOG_PREVIOUS.get(), TranslatableLine.SYSTEM_DIALOG_NEXT.get());
-    }
-
-    /** Takes every editor inventory, dialog and chat prompt off players' screens, forgetting their callbacks. */
+    /** Takes every editor inventory and chat prompt off players' screens, forgetting their callbacks. */
     void closeEditors() {
-        //a prompt asked in a text box takes its own dialog away
         PlayerInput.cancelAll();
-        for (final Player p : Bukkit.getOnlinePlayers()) {
-            Dialogs.close(p.getUniqueId());
-        }
         GUIBuilder.closeAll();
     }
 
@@ -191,8 +175,6 @@ public final class RealBossbarPlugin extends JavaPlugin {
     public void onDisable() {
         //the listeners behind them are going: an editor left open would let its items be taken
         closeEditors();
-        //after closing them, since dialogs can't be taken off screens once it has run
-        Dialogs.shutdown();
         if (realBossbar != null) {
             realBossbar.getDisplayManager().stop();
             //Bukkit bars outlive the plugin otherwise, stuck on screen until the player leaves
